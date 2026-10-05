@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key><string>LazyAsk</string>
+    <key>CFBundleIdentifier</key><string>app.lazyask.desktop</string>
+    <key>CFBundleName</key><string>Lazy Ask</string>
+    <key>CFBundleDisplayName</key><string>Lazy Ask</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>15.0</string>
+    <key>LSUIElement</key><true/>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Lazy Ask listens for your questions and wake phrase while listening is on.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Lazy Ask captures meeting audio for a live transcript while listening is on.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Lazy Ask transcribes meeting audio so it can answer the latest question.</string>
+    <key>NSHighResolutionCapable</key><true/>
+</dict>
+</plist>
