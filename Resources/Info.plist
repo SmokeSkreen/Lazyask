@@ -6,6 +6,7 @@
     <key>CFBundleIdentifier</key><string>app.lazyask.desktop</string>
     <key>CFBundleName</key><string>Lazy Ask</string>
     <key>CFBundleDisplayName</key><string>Lazy Ask</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundleVersion</key><string>1</string>

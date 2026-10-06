@@ -219,6 +219,7 @@ final class AppModel: ObservableObject {
         startTask = Task { [weak self] in
             guard let self else { return }
             do {
+                self.refreshPermissions()
                 if !self.microphoneAllowed { await self.requestMicrophone() }
                 try Task.checkCancellation()
                 guard self.microphoneAllowed else {
@@ -226,7 +227,7 @@ final class AppModel: ObservableObject {
                 }
                 if !self.screenAllowed { self.requestScreen() }
                 guard self.screenAllowed else {
-                    throw LazyAskError.permission("Allow Screen & System Audio Recording for Lazy Ask in System Settings. Quit and reopen the app if macOS asks you to.")
+                    throw LazyAskError.permission("Allow Screen & System Audio Recording for Lazy Ask in System Settings. If it is already on, quit and reopen Lazy Ask, then try again.")
                 }
                 let threshold = 0.025 - self.sensitivity * 0.023
                 let systemClient = RealtimeClient(source: .system, apiKey: self.apiKey, threshold: threshold)

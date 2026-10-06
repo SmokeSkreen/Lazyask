@@ -1,3 +1,4 @@
+import AppKit
 import LazyAskCore
 import SwiftUI
 
@@ -55,7 +56,9 @@ struct MeetingHomeView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "waveform.circle.fill").font(.system(size: 25)).foregroundStyle(accent)
+                Image(nsImage: NSApplication.shared.applicationIconImage)
+                    .resizable().interpolation(.high).scaledToFit().frame(width: 32, height: 32)
+                    .accessibilityLabel("Lazy Ask icon")
                 Text("Lazy Ask").font(.system(size: 19, weight: .semibold))
             }
             .padding(18)

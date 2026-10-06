@@ -27,6 +27,14 @@ BIN_DIR="$(swift build --disable-sandbox --build-system native --manifest-cache 
 APP_DIR="$PROJECT_ROOT/dist/Lazy Ask.app"
 assert_app_stopped
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+ICONSET="$PROJECT_ROOT/.build/AppIcon.iconset"
+mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+    sips -z "$size" "$size" "$PROJECT_ROOT/Resources/AppIcon.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+    retina_size=$((size * 2))
+    sips -z "$retina_size" "$retina_size" "$PROJECT_ROOT/Resources/AppIcon.png" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
 cp "$BIN_DIR/LazyAsk" "$APP_DIR/Contents/MacOS/LazyAsk"
 cp "$PROJECT_ROOT/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
 # Desktop sync can add Finder metadata that interferes with code signing.
@@ -35,4 +43,9 @@ xattr -dr com.apple.ResourceFork "$APP_DIR" 2>/dev/null || true
 codesign --force --sign - --identifier app.lazyask.desktop "$APP_DIR"
 xattr -d com.apple.FinderInfo "$APP_DIR" 2>/dev/null || true
 codesign --verify --deep --strict "$APP_DIR"
+touch "$APP_DIR"
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+if [[ -x "$LSREGISTER" ]]; then
+    "$LSREGISTER" -f "$APP_DIR" || printf 'Could not refresh the macOS app registration.\n' >&2
+fi
 printf 'Built %s\n' "$APP_DIR"

@@ -337,6 +337,9 @@ struct SettingsView: View {
         }
         .padding(20).frame(width: 460, height: 550)
         .onAppear { model.refreshPermissions() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refreshPermissions()
+        }
     }
 
     private func permissionRow(_ name: String, symbol: String, allowed: Bool, action: @escaping () -> Void) -> some View {
