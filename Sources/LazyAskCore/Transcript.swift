@@ -61,11 +61,12 @@ public struct TranscriptBuffer: Sendable {
     private let maxSegments: Int
     private let maxCharacters: Int
 
-    public init(retentionMs: Double = 8 * 60 * 1_000, maxSegments: Int = 600,
-                maxCharacters: Int = 60_000) {
+    public init(retentionMs: Double = .infinity, maxSegments: Int = .max,
+                maxCharacters: Int = .max, segments: [TranscriptSegment] = []) {
         self.retentionMs = retentionMs
         self.maxSegments = max(1, maxSegments)
         self.maxCharacters = max(1, maxCharacters)
+        self.segments = segments.sorted { ($0.startMs, $0.id) < ($1.startMs, $1.id) }
     }
 
     public mutating func upsert(_ segment: TranscriptSegment, nowMs: Double) {
@@ -84,6 +85,7 @@ public struct TranscriptBuffer: Sendable {
     }
 
     public mutating func prune(nowMs: Double) {
+        guard retentionMs.isFinite || maxSegments != .max || maxCharacters != .max else { return }
         segments.removeAll { $0.endMs < nowMs - retentionMs }
         var characters = segments.reduce(0) { $0 + $1.text.count }
         while segments.count > maxSegments || characters > maxCharacters {

@@ -25,14 +25,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         installMainMenu()
-        mainWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 540),
+        mainWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 920, height: 620),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
                               backing: .buffered, defer: false)
         mainWindow.title = "Lazy Ask"
         mainWindow.isReleasedWhenClosed = false
         mainWindow.contentView = NSHostingView(rootView: MainView(model: model))
         mainWindow.center()
-        mainWindow.minSize = NSSize(width: 640, height: 440)
+        mainWindow.minSize = NSSize(width: 760, height: 540)
 
         overlay = AnswerPanel(contentRect: NSRect(x: 0, y: 0, width: 400, height: 270),
                               styleMask: [.borderless, .resizable, .nonactivatingPanel],
@@ -76,10 +76,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         status.isEnabled = false
         menu.addItem(status)
         menu.addItem(.separator())
+        addItem("Lazy Meetings", action: #selector(home), to: menu, enabled: !model.isNavigating)
         addItem(model.state == .starting ? "Cancel connection" : model.state.active ? "Stop listening" : "Start listening",
-                action: #selector(toggle), to: menu, enabled: model.state != .stopping)
-        addItem("Answer latest question", action: #selector(askLatest), to: menu)
-        addItem("Show answer", action: #selector(showAnswer), to: menu)
+                action: #selector(toggle), to: menu, enabled: !model.isHome && !model.isNavigating && model.state != .stopping)
+        addItem("Answer latest question", action: #selector(askLatest), to: menu, enabled: !model.isHome)
+        addItem("Show answer", action: #selector(showAnswer), to: menu, enabled: !model.isHome)
         menu.addItem(.separator())
         addItem("Open Lazy Ask", action: #selector(showMain), to: menu)
         addItem("Settings...", action: #selector(settings), to: menu)
@@ -130,6 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggle() { model.toggleListening() }
+    @objc private func home() { showMain(); Task { await model.goHome() } }
     @objc private func askLatest() { model.askLatest() }
     @objc private func showAnswer() { overlay.orderFrontRegardless() }
     @objc private func settings() { showMain(); model.showSettings = true }

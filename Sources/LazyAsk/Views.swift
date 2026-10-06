@@ -2,29 +2,13 @@ import AppKit
 import LazyAskCore
 import SwiftUI
 
-private let accent = Color(red: 0.12, green: 0.48, blue: 0.35)
+let accent = Color(red: 0.12, green: 0.48, blue: 0.35)
 
 struct MainView: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: "waveform.circle.fill").font(.system(size: 28)).foregroundStyle(accent)
-                Text("Lazy Ask").font(.system(size: 23, weight: .semibold))
-                Spacer()
-                StateLabel(model: model)
-                Button(action: model.toggleListening) {
-                    Label(model.state == .starting ? "Cancel" : model.state.active ? "Stop" : "Start listening",
-                          systemImage: model.state == .starting || model.state.active ? "stop.fill" : "mic.fill")
-                        .frame(minWidth: 108)
-                }
-                .buttonStyle(.borderedProminent).tint(accent)
-                .disabled(model.state == .stopping)
-                IconButton("Settings", symbol: "gearshape") { model.showSettings = true }
-            }
-            .padding(20)
-            Divider()
             if let error = model.errorMessage {
                 HStack(alignment: .top) {
                     Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
@@ -35,6 +19,51 @@ struct MainView: View {
                 .padding(12).background(Color.red.opacity(0.06))
                 Divider()
             }
+            if model.isHome { MeetingHomeView(model: model) }
+            else { MeetingWorkspaceView(model: model) }
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(minWidth: 760, minHeight: 500)
+        .tint(accent)
+        .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
+        .sheet(item: $model.libraryEdit) { edit in MeetingNameEditor(model: model, edit: edit) }
+        .alert(model.pendingDeletion?.title ?? "Delete?", isPresented: Binding(
+            get: { model.pendingDeletion != nil },
+            set: { if !$0 { model.pendingDeletion = nil } }
+        )) {
+            Button("Cancel", role: .cancel) { model.pendingDeletion = nil }
+            Button("Delete", role: .destructive) {
+                if let deletion = model.pendingDeletion {
+                    Task { await model.confirmDeletion(deletion) }
+                }
+            }
+        } message: { Text(model.pendingDeletion?.message ?? "") }
+    }
+}
+
+struct MeetingWorkspaceView: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                IconButton("Lazy Meetings", symbol: "chevron.left") { Task { await model.goHome() } }
+                    .disabled(model.isNavigating || model.state == .stopping)
+                Text(model.meetingTitle).font(.system(size: 18, weight: .semibold)).lineLimit(1)
+                    .help(model.meetingTitle)
+                Spacer()
+                StateLabel(model: model)
+                Button(action: model.toggleListening) {
+                    Label(model.state == .starting ? "Cancel" : model.state.active ? "Stop" : "Start listening",
+                          systemImage: model.state == .starting || model.state.active ? "stop.fill" : "mic.fill")
+                        .frame(minWidth: 108)
+                }
+                .buttonStyle(.borderedProminent).tint(accent)
+                .disabled(model.state == .stopping || model.isNavigating)
+                IconButton("Settings", symbol: "gearshape") { model.showSettings = true }
+            }
+            .padding(20)
+            Divider()
             HSplitView {
                 transcript.frame(minWidth: 280, idealWidth: 360)
                 answerPane.frame(minWidth: 280, idealWidth: 340)
@@ -54,7 +83,6 @@ struct MainView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .frame(minWidth: 640, minHeight: 440)
-        .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
     }
 
     private var transcript: some View {
@@ -62,9 +90,9 @@ struct MainView: View {
             HStack {
                 Text("Transcript").font(.system(size: 14, weight: .semibold))
                 Spacer()
-                Text("\(model.retentionMinutes) min").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text("Until cleared").font(.system(size: 11)).foregroundStyle(.secondary)
                 IconButton("Clear transcript and answer", symbol: "trash") { model.clearConversation() }
-                    .disabled(model.segments.isEmpty && model.answer.isEmpty)
+                    .disabled(!model.canClearTranscript)
             }
             .padding(.horizontal, 18).padding(.vertical, 12)
             if model.segments.isEmpty {
@@ -274,8 +302,10 @@ struct SettingsView: View {
                     }
                 }
                 Section("Listening") {
-                    Picker("Transcript window", selection: $model.retentionMinutes) {
-                        ForEach([5, 8, 10], id: \.self) { Text("\($0) minutes").tag($0) }
+                    HStack {
+                        Text("Transcript window")
+                        Spacer()
+                        Text("Until cleared").foregroundStyle(.secondary)
                     }
                     Picker("Language", selection: $model.language) {
                         Text("Auto").tag("")
@@ -287,6 +317,15 @@ struct SettingsView: View {
                     HStack {
                         Text("Speech sensitivity")
                         Slider(value: $model.sensitivity, in: 0...1).frame(maxWidth: 170)
+                    }
+                }
+                Section("Storage") {
+                    HStack {
+                        Text("Meeting library")
+                        Spacer()
+                        Text("On this Mac").foregroundStyle(.secondary)
+                        IconButton("Show meeting library in Finder", symbol: "folder") { model.showLibraryInFinder() }
+                            .disabled(!model.libraryAvailable)
                     }
                 }
             }

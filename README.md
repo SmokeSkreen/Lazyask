@@ -1,6 +1,6 @@
 # Lazy Ask
 
-A native Mac meeting assistant. It listens to meeting audio and your microphone, keeps a short transcript in memory, and shows answers in a floating window.
+A native Mac meeting assistant. Organize separate Lazy Meetings into folders, listen to meeting audio and your microphone, and view answers in a floating window.
 
 ## Requirements
 
@@ -21,7 +21,9 @@ open "dist/Lazy Ask.app"
 
 If you do not have the Apple build tools, run `xcode-select --install` once, then finish the installer. Always open the bundled `.app`; running the bare Swift binary does not give macOS the app's permission descriptions.
 
-The build script creates a locally signed app at `dist/Lazy Ask.app`. This is a local development build, not a notarized public download. Quit an older copy before rebuilding it. The build uses SwiftPM's native engine to keep the app in one executable and avoid a test-plugin issue in the local Swift 6.4 tools.
+Every build updates the same locally signed app at `dist/Lazy Ask.app`. For each new iteration, quit Lazy Ask and double-click **Launch Lazy Ask.command** to rebuild and reopen it. The build script checks that the app is stopped before replacing its executable. Saved transcripts, preferences, and your Keychain API key stay outside the app bundle and carry across updates.
+
+This is a local development build, not a notarized public download. The build uses SwiftPM's native engine to keep the app in one executable and avoid a test-plugin issue in the local Swift 6.4 tools.
 
 ## First Use
 
@@ -29,10 +31,22 @@ The build script creates a locally signed app at `dist/Lazy Ask.app`. This is a 
 2. Paste your OpenAI API key and click **Save**. The app stores it in macOS Keychain.
 3. Click **Allow** for Microphone and Screen & system audio. macOS calls the second permission **Screen & System Audio Recording** on newer versions and **Screen Recording** on some older versions.
 4. If macOS asks you to quit and reopen Lazy Ask, do that before starting.
-5. Join a meeting and click **Start listening**. The menu bar icon also has start and stop controls.
+5. On the home screen, click **New meeting**, enter a name, and click **Create**. Join your online meeting and click **Start listening** inside that Lazy Meeting. The menu bar icon also has start and stop controls.
 6. After someone asks a question, say **"I'm not sure, Lazy Ask."** To ask your own question, say **"Lazy Ask, what is a cache?"** You can also type a question in the app.
 
 Use the Mac's default microphone. Headphones help keep meeting playback out of the microphone stream. A muted meeting microphone can still be heard by Lazy Ask if the input device is active.
+
+## Lazy Meetings and Folders
+
+The home screen opens first. Each Lazy Meeting has its own saved transcript and answer context. Click a meeting to open it, and use the back arrow to return home. Returning home or changing meetings stops listening first.
+
+Use the three-dot menu on a meeting to rename it, move it into a folder, or delete it. The folder-plus icon creates a folder; a folder's menu lets you rename or delete it. Deleting a folder moves its meetings to **Unfiled**. Deleting a meeting removes its transcript after confirmation. Search filters meeting names within the selected folder.
+
+An existing single-transcript file is imported once as **Imported meeting**. The old JSON file is removed only after its data has been committed to the meeting database.
+
+Storage is local in SQLite. The home screen loads meeting summaries rather than every transcript; only the opened meeting's transcript is loaded. New speech turns are saved individually. This keeps storage updates small as the library grows. Cloud storage is not required for a single Mac; it would be useful later for device syncing or shared access. SQLite is designed for [local application storage](https://www.sqlite.org/whentouse.html).
+
+Keep a backup of `~/Library/Application Support/LazyAsk/`. Copy this folder while Lazy Ask is closed so the database and its journal files are consistent, or include it in your normal Mac backup. Settings has a folder button to show the meeting library in Finder.
 
 Use **Run demo** to test the transcript, voice-trigger path, and answer overlay without an API key, microphone access, or a network request. Demo answers are fixed sample text and are marked **SAMPLE**. To open directly in demo mode:
 
@@ -44,8 +58,9 @@ open "dist/Lazy Ask.app" --args --demo
 
 - Lazy Ask captures Mac playback audio, including other apps' audio, and the default microphone as separate sources. It does not use a Zoom, Meet, Teams, or Discord integration.
 - While listening is on, speech audio is sent to OpenAI for transcription. A question sends the recent transcript to OpenAI for an answer.
-- Transcripts stay in app memory. The default window is 8 minutes; settings offer 5, 8, or 10 minutes. Old segments are removed during silence too. Starting a new listening session clears the previous transcript and answer.
-- No audio or transcript file is written. The latest answer stays visible until it is replaced, cleared, or the app quits. Preferences and the Keychain entry are saved.
+- The transcript window is **Until cleared**. Text has no automatic time, character, or segment limit and is kept when you stop/start listening or reopen the app. The trash button clears only the currently opened meeting's transcript and answer.
+- Final transcript text, meeting names, and folder membership are saved locally at `~/Library/Application Support/LazyAsk/meetings.sqlite3`. Audio is not saved. Demo text is temporary and is not saved to any meeting. The latest answer is temporary and is cleared when you change meetings or quit.
+- Each answer uses up to the latest 600 eligible transcript segments and 60,000 characters from the currently opened meeting only. This request limit does not delete older text from saved history.
 - The answer request sets `store: false`. This does not mean the provider has no retention; see [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data).
 - Only final microphone transcripts can activate the wake phrase. Meeting transcripts provide context. No answer is played through your microphone or speakers.
 - The overlay uses macOS window sharing protection as a best effort. Screen-sharing apps and macOS versions may handle it differently. Share the meeting or document window, not the whole display, when the answer needs to stay private.
@@ -58,7 +73,7 @@ ScreenCaptureKit
   |-- meeting audio ------> 24 kHz mono PCM16 --> live transcription --|
   |-- default microphone -> 24 kHz mono PCM16 --> live transcription --|
                                                                     |
-                                                     rolling transcript
+                                                     saved transcript
                                                                     |
                                                final mic wake phrase
                                                                     |
@@ -85,7 +100,7 @@ Answers use the Responses API with `gpt-4.1-mini` by default. The answer model c
 bash scripts/test.sh
 ```
 
-Tests cover normal and messy wake phrases, partial and split phrases, duplicate triggers, question selection, rolling-buffer limits, local speech turns, out-of-order transcription results, the Realtime configuration, native audio conversion, and mocked streaming answer responses and errors. The test script also finds the test framework in Apple Command Line Tools when full Xcode is not installed.
+Tests cover meeting/folder creation, rename, move, deletion, migration from the old transcript file, transcript isolation across meetings, unlimited retention, demo isolation, wake phrases, answer context limits, local speech turns, out-of-order transcription results, native audio conversion, and mocked streaming answer responses and errors. The test script also finds the test framework in Apple Command Line Tools when full Xcode is not installed.
 
 Project layout:
 

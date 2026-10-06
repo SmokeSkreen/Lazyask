@@ -116,13 +116,25 @@ public struct AnswerRequest: Codable, Sendable, Equatable {
 
     public static func build(intent: AskIntent, triggerText: String, segments: [TranscriptSegment],
                              beforeMs: Double) throws -> AnswerRequest {
-        let context = segments.filter { $0.startMs <= beforeMs && !WakePhrase.contains($0.text) }
+        let available = segments.filter { $0.startMs <= beforeMs && !WakePhrase.contains($0.text) }
+        var context: [TranscriptSegment] = []
+        var characters = 0
+        for segment in available.reversed() {
+            guard context.count < 600 else { break }
+            let remaining = 60_000 - characters
+            guard remaining > 0 else { break }
+            var bounded = segment
+            bounded.text = String(segment.text.suffix(remaining))
+            context.append(bounded)
+            characters += bounded.text.count
+        }
+        context.reverse()
         let question: String
         switch intent {
         case .direct(let text):
             question = text.trimmingCharacters(in: .whitespacesAndNewlines)
         case .latestQuestion:
-            guard let latest = QuestionExtractor.latest(in: context, beforeMs: beforeMs) else {
+            guard let latest = QuestionExtractor.latest(in: available, beforeMs: beforeMs) else {
                 throw LazyAskError.noQuestion
             }
             question = latest
